@@ -1,7 +1,7 @@
 
 local ffi = require("ffi");
 
-local Queue = require("schedlua.queue")
+local Queue = require("schedlua.priority_queue")
 local Task = require("schedlua.task");
 
 
@@ -20,7 +20,7 @@ local Task = require("schedlua.task");
 	thousands of tasks which intend to execute concurrently.
 
 	Work that is to be performed is encapsulated in a 'task' object.  The task object
-	contains the entirety of the context related to a particular task.  This is the 
+	contains the entirety of the context related to a particular task.  This is the
 	parameters that were used to begin execution, as well as a reference to the function
 	that is actually to be run to perform the task.
 
@@ -32,10 +32,10 @@ local Task = require("schedlua.task");
 	is just an indicator that at some point in the future this task will execute.
 
 	Which task is to execute next is determined in the scheduler's 'step()' function.
-	Here, the schedulers task picking routine (first in first out) pulls the next 
+	Here, the schedulers task picking routine (first in first out) pulls the next
 	task out of the ReadyList, and resumes it.
 
-	A task will run until it explicitly calls 'yield()', or yields implicitly by 
+	A task will run until it explicitly calls 'yield()', or yields implicitly by
 	performing an operation that in turn calls yield.
 
 	This scheduler is fairly simple, and will be appropriate for many relatively
@@ -62,7 +62,7 @@ function Scheduler.init(self, ...)
 		TasksReadyToRun = Queue();
 	}
 	setmetatable(obj, Scheduler_mt)
-	
+
 	return obj;
 end
 
@@ -79,7 +79,7 @@ end
 	A simple method to let anyone know how many tasks are currently
 	on the ready to run list.
 
-	This might be useful when you're running some predicate logic based 
+	This might be useful when you're running some predicate logic based
 	on how many tasks there are.
 --]]
 function Scheduler.tasksPending(self)
@@ -100,18 +100,20 @@ end
 function Scheduler.scheduleTask(self, task, params, priority)
 	--print("Scheduler.scheduleTask: ", task, params)
 	params = params or {}
-	
+
 	if not task then
 		return false, "no task specified"
 	end
 
 	task:setParams(params);
-	
-	if priority == 0 then
-		self.TasksReadyToRun:pushFront(task);	
-	else
-		self.TasksReadyToRun:enqueue(task);	
-	end
+
+	-- if priority == 0 then
+	-- 	self.TasksReadyToRun:pushFront(task);
+	-- else
+	-- 	self.TasksReadyToRun:enqueue(task);
+	-- end
+
+  self.TasksReadyToRun:enqueue(task);
 
 	task.state = "readytorun"
 
@@ -147,7 +149,7 @@ function Scheduler.step(self)
 		return true;
 	end
 
-	-- If the task we pulled off the active list is 
+	-- If the task we pulled off the active list is
 	-- not dead, then perhaps it is suspended.  If that's true
 	-- then it needs to drop out of the active list.
 	-- We assume that some other part of the system is responsible for
@@ -157,7 +159,7 @@ function Scheduler.step(self)
 		return true;
 	end
 
-	-- If we have gotten this far, then the task truly is ready to 
+	-- If we have gotten this far, then the task truly is ready to
 	-- run, and it should be set as the currentFiber, and its coroutine
 	-- is resumed.
 	self.CurrentFiber = task;
@@ -168,8 +170,8 @@ function Scheduler.step(self)
 	-- 1) The routine exited normally
 	-- 2) The routine yielded
 	--
-	-- In both cases, we parse out the results of the resume 
-	-- into a success indicator and the rest of the values returned 
+	-- In both cases, we parse out the results of the resume
+	-- into a success indicator and the rest of the values returned
 	-- from the routine
 	--local pcallsuccess = results[1];
 	--table.remove(results,1);
